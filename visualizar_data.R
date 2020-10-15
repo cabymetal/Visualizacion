@@ -44,11 +44,14 @@ ggplot(df, aes(x=prefered_watch, fill=prefered_watch)) + geom_bar(width=0.6) +
 
 df_bydate <- df %>% mutate(anio_mes = format(date_added, "%Y%m")) %>% filter(!is.na(anio_mes)) %>% 
   group_by(anio_mes,type, country_fct) %>% summarise(cant_contenido = n()) %>% 
-  filter(country_fct %in% c('United States', 'Various_countries', 'Colombia'))
+  filter(country_fct %in% c('United States', 'Various_countries', 'Colombia')) %>% 
+  mutate(point_size = if_else(anio_mes <= "201401", 1, 3))
 
-ggplot(df_bydate, aes(x=anio_mes, y=cant_contenido, color=country_fct)) + geom_point(alpha=0.5) +
-  geom_smooth(method = "lm", formula = y ~ a * log(x), aes(colour = 'polynomial'), se= FALSE)+
+ggplot(df_bydate, aes(x=anio_mes, y=cant_contenido, color=country_fct, size=point_size)) + geom_point(alpha=0.5) +
   scale_x_discrete(breaks = c("200801","201502","201801", "202001"))+
+  geom_vline(data=df_bydate, mapping=aes(xintercept=c("201402")), color="black", linetype = "dashed") +
+  guides(size=FALSE) +
+  geom_text(data=df_bydate, mapping=aes(x=c("201402"), y=0, size=2,label=c("Adopción comercial SmartTV")), colour="black", size=4, angle=90, vjust=-0.4, hjust=-1.5) +
   theme_classic()  + 
   theme(panel.spacing = unit(3, "lines"), legend.position =c(0.8, 0.8),
         legend.title = element_blank(), panel.grid.major = element_line(color = "grey80"))+
@@ -59,10 +62,30 @@ ggplot(df_bydate, aes(x=anio_mes, y=cant_contenido, color=country_fct)) + geom_p
 df_bydatecomplete <- df %>% group_by(date_added,prefered_watch,type, country_fct) %>% summarise(cant_contenido = mean(n())) %>%  filter(!is.na(date_added)) %>%
   filter(country_fct %in% c('United States', 'Various_countries', 'Colombia'))
 
-ggplot(df_bydatecomplete, aes(x=prefered_watch, fill=prefered_watch)) + geom_bar(alpha=0.5) +
+ggplot(df_bydatecomplete, aes(x=prefered_watch, fill=prefered_watch)) + geom_bar(alpha=0.9) +
   #scale_x_continuous(breaks = c("200801","201502","201801", "202001"))+
   theme_classic()  + 
-  theme(legend.position =c(0.8, 0.8),
+  theme(panel.spacing = unit(3, "lines"), legend.position =c(0.8, 0.8),
         legend.title = element_blank(), panel.grid.major = element_line(color = "grey80"))+
   facet_wrap(~type)
 
+#TODO ADD GRAPH BY LINE
+
+by_datemonth <-  df %>% filter(!is.na(date_added)) %>% 
+  group_by(date_added, prefered_watch)  %>% summarise(cant_contenido = n()) %>% 
+  mutate(anio_mes = format(date_added, "%Y%m")) %>% group_by(anio_mes, prefered_watch)%>%
+  summarise(cant_contenido = sum(cant_contenido)) %>% mutate(point_size = if_else(anio_mes <= "201402", 0.7, 2.5))
+  #filter(anio_mes!="2020")
+by_datemonth%>% filter(prefered_watch == "TV") %>% select( -prefered_watch, -point_size) -> tempdf
+  
+ggplot(by_datemonth, aes(x=anio_mes, y=cant_contenido, color=prefered_watch)) + 
+  geom_line(aes(group=prefered_watch))+
+  scale_x_discrete(breaks = c("200801","201402","201502","201801", "202001"))+
+  geom_vline(data=df_bydate, mapping=aes(xintercept=c("201402")), color="black", linetype = "dashed") +
+  guides(alpha=FALSE) +
+  labs(title="Preferencia de usuarios", subtitle = "Relacion de preferencia de usuarios a lo largo del tiempo", 
+       xlab="Año Mes", ylab="Cantidad contenido")+
+  geom_text(data=df_bydate, mapping=aes(x=c("201402"), y=0, size=2,label=c("Adopción comercial SmartTV")), colour="black", size=4, angle=90, vjust=-0.4, hjust=-1.5) +
+  theme_classic()  + 
+  theme(legend.title = element_blank(), panel.grid.major = element_line(color = "grey80"))+
+  geom_jitter() 
